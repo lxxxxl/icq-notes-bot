@@ -80,7 +80,7 @@ def main():
     while True:
         params = dict(
             lastEventId = last_known_event_id,
-            pollTime = 60 * 5   # API server should hang connection for 5 mins
+            pollTime = 60   # API server should hang connection for 1 min
         )
         data = api_request('/events/get', params)
 
