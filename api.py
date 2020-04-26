@@ -6,13 +6,17 @@ import requests
 import logging
 import os
 from time import sleep
+from YadiskWrapper import YadiskWrapper
 
 
 logging.basicConfig(level=logging.INFO)
 
 api_url = 'https://api.icq.net/bot/v1/'
-access_token = os.environ['ICQ_ACCESS_TOKEN']
+icq_access_token = os.environ['ICQ_ACCESS_TOKEN']
+disk_access_token = os.environ['DISK_ACCESS_TOKEN']
 allowed_userids = os.environ['ICQ_ALLOWED_USERIDS'].split(',')
+
+disk = YadiskWrapper(disk_access_token)
 
 def api_request(api, params=None):
     """performs HTTP requset to API server
@@ -21,7 +25,7 @@ def api_request(api, params=None):
     url = '{}{}'.format(api_url, api)
     if params == None:
         params = dict()
-    params['token'] = access_token
+    params['token'] = icq_access_token
     response = requests.get(url, params=params)
     return json.loads(response.content)
 
@@ -56,12 +60,15 @@ def process_event_newMessage(payload):
     if payload['from']['userId'] in allowed_userids:
         logging.info('newMessage: %s', payload['text'])
 
-        # TODO save note somewhere
+        # Save note to disk
+        response_text = 'Saved.'
+        if not disk.save_note(payload['text']):
+            response_text = 'Cannot save note.'
 
         # send response to user
         params = dict(
             chatId = payload['from']['userId'],
-            text = 'Saved.'
+            text = response_text
         )
         api_request('/messages/sendText', params)
     else:
@@ -76,6 +83,11 @@ def process_event_newMessage(payload):
 
 
 def main():
+    # Initialize Yandex Disk connection
+    if not disk.set_working_dir('/notes'):
+        logging.error('Cannot access disk')
+
+
     last_known_event_id = 0
     while True:
         params = dict(
